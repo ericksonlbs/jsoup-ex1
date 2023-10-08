@@ -1,0 +1,54 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+name: Java CI with Maven
+
+on:
+  workflow_dispatch:    
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:  
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare Jaguar2
+      uses: actions/checkout@v3
+      with:
+        repository: saeg/jaguar2        
+        path: jaguar2-repo # diretório onde o repositório será clonado
+    - name: Install dependency
+      run: |
+        cd jaguar2-repo
+        ./mvnw install
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        cache: maven
+    - name: Build with Maven
+      run: mvn -B package --file pom.xml
+    - name: Submit to Jaguar Portal      
+      uses: ericksonlbs/jaguarportal-submit@v0.0.1-snapshot
+      if: failure()
+      with:
+        jaguarPortalProjectKey:	29d79d99-2cb2-4b37-9a43-96e1bd50df85
+        jaguarPortalHostUrl: https://jaguarportal.azurewebsites.net/
+        jaguarPortalClientId: FD50DD4D7C867BFE6A21FB03792B59E0
+        jaguarPortalClientSecret: ${{ secrets.jaguarPortalClientSecret }}
+        jaguarPortalGitHubAccessToken: ${{ secrets.jaguarPortalGitHubAccessToken }}
+        jaguarPortalAnalysisPath: /target
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: jaguar
+        path: target/jaguar2.xml
+        retention-days: 5
